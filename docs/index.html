@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Offline-capable pivot table builder for Dekereke XML databases">
+    <meta name="theme-color" content="#2c3e50">
+    <title>Dekereke Pivot Tables</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png">
+    <link rel="apple-touch-icon" href="icons/icon-192.png">
+</head>
+<body>
+    <div id="app">
+        <!-- Header -->
+        <header>
+            <h1>Dekereke Pivot Tables</h1>
+            <div id="status-indicator" class="status-online" title="Online">●</div>
+            <div id="update-banner" class="update-banner hidden">
+                <span>New version available!</span>
+                <button id="update-btn">Update Now</button>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main id="main-content">
+            <!-- File Upload Section -->
+            <section id="upload-section" class="card">
+                <h2>Load Database</h2>
+                <p class="privacy-notice">
+                    🔒 All data is processed locally in your browser. Nothing is uploaded to any server.
+                </p>
+                <div class="file-input-wrapper">
+                    <input type="file" id="file-input" accept=".xml" aria-label="Select Dekereke XML database file">
+                    <label for="file-input" class="file-label">
+                        <span id="file-label-text">Choose XML File</span>
+                    </label>
+                </div>
+                <div id="file-info" class="file-info hidden"></div>
+            </section>
+
+            <!-- Pivot Configuration Section -->
+            <section id="config-section" class="card hidden">
+                <h2>Configure Pivot Table</h2>
+                <div class="config-grid">
+                    <div class="config-item">
+                        <label for="row-field">Row Field:</label>
+                        <select id="row-field" aria-label="Select field for rows">
+                            <option value="">-- Select Field --</option>
+                        </select>
+                    </div>
+                    <div class="config-item">
+                        <label for="col-field">Column Field:</label>
+                        <select id="col-field" aria-label="Select field for columns">
+                            <option value="">-- Select Field --</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="filter-section">
+                    <h3>Advanced Filters <span class="optional-label">(Optional)</span></h3>
+                    <p class="filter-description">Filter which records to include in the pivot table</p>
+                    <div id="filter-groups-container"></div>
+                    <div class="filter-actions">
+                        <button id="add-filter-group-btn" class="secondary-btn">+ Add Filter Group</button>
+                        <button id="clear-filters-btn" class="secondary-btn">Clear All Filters</button>
+                        <button id="regex-help-btn" class="help-btn" title="Regex Reference">📖 Regex Help</button>
+                    </div>
+                </div>
+                <button id="generate-btn" class="primary-btn" disabled>Generate Pivot Table</button>
+            </section>
+
+            <!-- Pivot Table Section -->
+            <section id="pivot-section" class="card hidden">
+                <div class="section-header">
+                    <h2>Pivot Table</h2>
+                    <div class="pivot-controls">
+                        <button id="refresh-pivot-btn" class="secondary-btn">🔄 Refresh with Current Filters</button>
+                        <button id="toggle-pivot-visibility-btn" class="secondary-btn">⚙️ Show/Hide Rows & Columns</button>
+                        <button id="back-to-config" class="secondary-btn">← Back to Configuration</button>
+                    </div>
+                </div>
+                <div id="pivot-info" class="pivot-info"></div>
+                
+                <!-- Pivot Visibility Controls -->
+                <div id="pivot-visibility-section" class="pivot-visibility-section hidden">
+                    <div class="visibility-controls-grid">
+                        <div class="visibility-control-panel">
+                            <h3>Row Visibility</h3>
+                            <div class="visibility-actions">
+                                <button class="small-btn" id="show-all-rows">Show All</button>
+                                <button class="small-btn" id="hide-all-rows">Hide All</button>
+                            </div>
+                            <div id="row-visibility-toggles" class="visibility-toggles"></div>
+                            <div class="hidden-items-section">
+                                <h4>Hidden Rows</h4>
+                                <select id="hidden-rows-select" size="5" class="hidden-items-select"></select>
+                                <button id="add-hidden-rows-btn" class="small-btn">+ Add Selected</button>
+                            </div>
+                        </div>
+                        <div class="visibility-control-panel">
+                            <h3>Column Visibility</h3>
+                            <div class="visibility-actions">
+                                <button class="small-btn" id="show-all-cols">Show All</button>
+                                <button class="small-btn" id="hide-all-cols">Hide All</button>
+                            </div>
+                            <div id="col-visibility-toggles" class="visibility-toggles"></div>
+                            <div class="hidden-items-section">
+                                <h4>Hidden Columns</h4>
+                                <select id="hidden-cols-select" size="5" class="hidden-items-select"></select>
+                                <button id="add-hidden-cols-btn" class="small-btn">+ Add Selected</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="table-wrapper">
+                    <table id="pivot-table"></table>
+                </div>
+            </section>
+
+            <!-- Datasheet Section -->
+            <section id="datasheet-section" class="card hidden">
+                <div class="section-header">
+                    <h2>Data View</h2>
+                    <button id="back-to-pivot" class="secondary-btn">← Back to Pivot Table</button>
+                </div>
+                <div id="datasheet-info" class="datasheet-info"></div>
+                
+                <div class="column-controls">
+                    <h3>Column Visibility</h3>
+                    <div id="column-toggles" class="column-toggles"></div>
+                </div>
+
+                <div class="table-wrapper">
+                    <table id="datasheet-table">
+                        <thead id="datasheet-header"></thead>
+                        <tbody id="datasheet-body"></tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer>
+            <p>Dekereke Pivot Tables v1.0.0 | Works Offline</p>
+        </footer>
+    </div>
+
+    <!-- Regex Help Modal -->
+    <div id="regex-modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>JavaScript Regular Expression (Regex) Reference</h2>
+                <button id="close-regex-modal" class="close-modal">×</button>
+            </div>
+            <div class="modal-body">
+                <h3>Common Patterns</h3>
+                <table class="help-table">
+                    <thead>
+                        <tr><th>Pattern</th><th>Description</th><th>Example</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td><code>^</code></td><td>Start of string</td><td><code>^H</code> matches strings starting with "H"</td></tr>
+                        <tr><td><code>$</code></td><td>End of string</td><td><code>L$</code> matches strings ending with "L"</td></tr>
+                        <tr><td><code>.</code></td><td>Any single character</td><td><code>C.V</code> matches "CAV", "CIV", etc.</td></tr>
+                        <tr><td><code>*</code></td><td>Zero or more</td><td><code>CV*</code> matches "C", "CV", "CVV", etc.</td></tr>
+                        <tr><td><code>+</code></td><td>One or more</td><td><code>CV+</code> matches "CV", "CVV", but not "C"</td></tr>
+                        <tr><td><code>?</code></td><td>Zero or one</td><td><code>CV?</code> matches "C" or "CV"</td></tr>
+                        <tr><td><code>|</code></td><td>OR operator</td><td><code>H|L</code> matches "H" or "L"</td></tr>
+                        <tr><td><code>[]</code></td><td>Character class</td><td><code>[HL]</code> matches "H" or "L"</td></tr>
+                        <tr><td><code>[^]</code></td><td>Negated class</td><td><code>[^HL]</code> matches anything except "H" or "L"</td></tr>
+                        <tr><td><code>\d</code></td><td>Any digit (0-9)</td><td><code>\d+</code> matches one or more digits</td></tr>
+                        <tr><td><code>\w</code></td><td>Word character</td><td><code>\w+</code> matches letters, digits, underscore</td></tr>
+                        <tr><td><code>\s</code></td><td>Whitespace</td><td><code>\s+</code> matches spaces, tabs, newlines</td></tr>
+                        <tr><td><code>()</code></td><td>Grouping</td><td><code>(CV)+</code> matches "CV", "CVCV", etc.</td></tr>
+                    </tbody>
+                </table>
+                <h3>Flags</h3>
+                <p><strong>i</strong> - Case insensitive (automatically enabled in this app)</p>
+                <h3>Examples for Linguistic Data</h3>
+                <ul>
+                    <li><code>^CV</code> - Words starting with CV syllable</li>
+                    <li><code>V$</code> - Words ending with a vowel</li>
+                    <li><code>^(H|L)$</code> - Exactly H or L tone</li>
+                    <li><code>.*HL.*</code> - Contains HL sequence anywhere</li>
+                    <li><code>^[HL]+$</code> - Only H and L characters</li>
+                    <li><code>\d{4}</code> - Exactly 4 digits (e.g., Reference IDs)</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
