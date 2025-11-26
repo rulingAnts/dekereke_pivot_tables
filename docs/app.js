@@ -14,11 +14,8 @@ const state = {
   filterGroups: [],
   nextFilterGroupId: 1,
   nextFilterConditionId: 1,
-  pivotVisibility: {
-    rows: new Set(),
-    cols: new Set()
-  },
-  filteredRecordsCache: null
+  filteredRecordsCache: null,
+  fieldValuesCache: {} // Cache unique values per field for multi-select
 };
 
 // ===== Service Worker Registration & Update Management =====
@@ -199,7 +196,9 @@ function addFilterCondition(groupId) {
     field: state.fields[0] || '',
     operator: 'equals',
     value: '',
-    useRegex: false
+    values: [], // For multi-select
+    useRegex: false,
+    negate: false // NOT checkbox
   };
   group.conditions.push(condition);
   return condition;
@@ -223,6 +222,25 @@ function clearAllFilters() {
   state.nextFilterGroupId = 1;
   state.nextFilterConditionId = 1;
   renderFilterGroups();
+}
+
+function getFieldValues(fieldName) {
+  // Cache field values for performance
+  if (state.fieldValuesCache[fieldName]) {
+    return state.fieldValuesCache[fieldName];
+  }
+  
+  const valuesSet = new Set();
+  state.records.forEach(record => {
+    const value = record[fieldName];
+    if (value !== undefined && value !== null && value !== '') {
+      valuesSet.add(String(value));
+    }
+  });
+  
+  const sortedValues = Array.from(valuesSet).sort(naturalSort);
+  state.fieldValuesCache[fieldName] = sortedValues;
+  return sortedValues;
 }
 
 function applyFilters(records) {
@@ -252,58 +270,89 @@ function evaluateFilterGroup(record, group) {
 
 function evaluateCondition(record, condition) {
   const fieldValue = String(record[condition.field] || '');
-  const testValue = String(condition.value);
+  let result;
   
-  if (!testValue) {
-    return true; // Empty condition matches everything
-  }
-  
-  try {
-    if (condition.useRegex) {
-      const regex = new RegExp(testValue, 'i'); // Case insensitive
-      switch (condition.operator) {
-        case 'equals':
-        case 'contains':
-          return regex.test(fieldValue);
-        case 'not-equals':
-        case 'not-contains':
-          return !regex.test(fieldValue);
-        case 'starts-with':
-          return new RegExp('^' + testValue, 'i').test(fieldValue);
-        case 'ends-with':
-          return new RegExp(testValue + '$', 'i').test(fieldValue);
-        default:
-          return true;
-      }
+  // Handle multi-select operator (in-list)
+  if (condition.operator === 'in-list') {
+    if (!condition.values || condition.values.length === 0) {
+      result = true; // Empty list matches everything
     } else {
-      const fieldLower = fieldValue.toLowerCase();
-      const testLower = testValue.toLowerCase();
-      
-      switch (condition.operator) {
-        case 'equals':
-          return fieldLower === testLower;
-        case 'not-equals':
-          return fieldLower !== testLower;
-        case 'contains':
-          return fieldLower.includes(testLower);
-        case 'not-contains':
-          return !fieldLower.includes(testLower);
-        case 'starts-with':
-          return fieldLower.startsWith(testLower);
-        case 'ends-with':
-          return fieldLower.endsWith(testLower);
-        case 'empty':
-          return fieldValue === '';
-        case 'not-empty':
-          return fieldValue !== '';
-        default:
-          return true;
+      result = condition.values.some(val => {
+        const valLower = String(val).toLowerCase();
+        return fieldValue.toLowerCase() === valLower;
+      });
+    }
+  }
+  // Handle other operators
+  else {
+    const testValue = String(condition.value);
+    
+    if (!testValue && condition.operator !== 'empty' && condition.operator !== 'not-empty') {
+      result = true; // Empty condition matches everything
+    } else {
+      try {
+        if (condition.useRegex) {
+          const regex = new RegExp(testValue, 'i'); // Case insensitive
+          switch (condition.operator) {
+            case 'equals':
+            case 'contains':
+              result = regex.test(fieldValue);
+              break;
+            case 'not-equals':
+            case 'not-contains':
+              result = !regex.test(fieldValue);
+              break;
+            case 'starts-with':
+              result = new RegExp('^' + testValue, 'i').test(fieldValue);
+              break;
+            case 'ends-with':
+              result = new RegExp(testValue + '$', 'i').test(fieldValue);
+              break;
+            default:
+              result = true;
+          }
+        } else {
+          const fieldLower = fieldValue.toLowerCase();
+          const testLower = testValue.toLowerCase();
+          
+          switch (condition.operator) {
+            case 'equals':
+              result = fieldLower === testLower;
+              break;
+            case 'not-equals':
+              result = fieldLower !== testLower;
+              break;
+            case 'contains':
+              result = fieldLower.includes(testLower);
+              break;
+            case 'not-contains':
+              result = !fieldLower.includes(testLower);
+              break;
+            case 'starts-with':
+              result = fieldLower.startsWith(testLower);
+              break;
+            case 'ends-with':
+              result = fieldLower.endsWith(testLower);
+              break;
+            case 'empty':
+              result = fieldValue === '';
+              break;
+            case 'not-empty':
+              result = fieldValue !== '';
+              break;
+            default:
+              result = true;
+          }
+        }
+      } catch (error) {
+        console.error('Filter evaluation error:', error);
+        result = false; // Invalid regex or other error
       }
     }
-  } catch (error) {
-    console.error('Filter evaluation error:', error);
-    return false; // Invalid regex or other error
   }
+  
+  // Apply negation if NOT is checked
+  return condition.negate ? !result : result;
 }
 
 function renderFilterGroups() {
@@ -333,50 +382,76 @@ function renderFilterGroups() {
     `;
     
     group.conditions.forEach((condition) => {
+      const isMultiSelect = condition.operator === 'in-list';
+      const isEmptyOperator = condition.operator === 'empty' || condition.operator === 'not-empty';
+      const fieldValues = getFieldValues(condition.field);
+      
       html += `
-        <div class=\"filter-condition\" data-condition-id=\"${condition.id}\">
-          <div class=\"filter-field\">
+        <div class="filter-condition" data-condition-id="${condition.id}">
+          <div class="filter-field">
             <label>Field</label>
-            <select class=\"condition-field\" data-group-id=\"${group.id}\" data-condition-id=\"${condition.id}\">
+            <select class="condition-field" data-group-id="${group.id}" data-condition-id="${condition.id}">
               ${state.fields.map(field => 
-                `<option value=\"${escapeHtml(field)}\" ${field === condition.field ? 'selected' : ''}>${escapeHtml(field)}</option>`
+                `<option value="${escapeHtml(field)}" ${field === condition.field ? 'selected' : ''}>${escapeHtml(field)}</option>`
               ).join('')}
             </select>
           </div>
-          <div class=\"filter-field\">
+          <div class="filter-field">
             <label>Operator</label>
-            <select class=\"condition-operator\" data-group-id=\"${group.id}\" data-condition-id=\"${condition.id}\">
-              <option value=\"equals\" ${condition.operator === 'equals' ? 'selected' : ''}>Equals</option>
-              <option value=\"not-equals\" ${condition.operator === 'not-equals' ? 'selected' : ''}>Not Equals</option>
-              <option value=\"contains\" ${condition.operator === 'contains' ? 'selected' : ''}>Contains</option>
-              <option value=\"not-contains\" ${condition.operator === 'not-contains' ? 'selected' : ''}>Not Contains</option>
-              <option value=\"starts-with\" ${condition.operator === 'starts-with' ? 'selected' : ''}>Starts With</option>
-              <option value=\"ends-with\" ${condition.operator === 'ends-with' ? 'selected' : ''}>Ends With</option>
-              <option value=\"empty\" ${condition.operator === 'empty' ? 'selected' : ''}>Is Empty</option>
-              <option value=\"not-empty\" ${condition.operator === 'not-empty' ? 'selected' : ''}>Not Empty</option>
+            <select class="condition-operator" data-group-id="${group.id}" data-condition-id="${condition.id}">
+              <option value="equals" ${condition.operator === 'equals' ? 'selected' : ''}>Equals</option>
+              <option value="not-equals" ${condition.operator === 'not-equals' ? 'selected' : ''}>Not Equals</option>
+              <option value="contains" ${condition.operator === 'contains' ? 'selected' : ''}>Contains</option>
+              <option value="not-contains" ${condition.operator === 'not-contains' ? 'selected' : ''}>Not Contains</option>
+              <option value="starts-with" ${condition.operator === 'starts-with' ? 'selected' : ''}>Starts With</option>
+              <option value="ends-with" ${condition.operator === 'ends-with' ? 'selected' : ''}>Ends With</option>
+              <option value="in-list" ${condition.operator === 'in-list' ? 'selected' : ''}>In List</option>
+              <option value="empty" ${condition.operator === 'empty' ? 'selected' : ''}>Is Empty</option>
+              <option value="not-empty" ${condition.operator === 'not-empty' ? 'selected' : ''}>Not Empty</option>
             </select>
           </div>
-          <div class=\"filter-field\">
+          <div class="filter-field" ${isMultiSelect || isEmptyOperator ? 'style="display:none;"' : ''}>
             <label>Value</label>
-            <input type=\"text\" class=\"condition-value\" 
-              data-group-id=\"${group.id}\" 
-              data-condition-id=\"${condition.id}\"
-              value=\"${escapeHtml(condition.value)}\"
-              placeholder=\"Filter value\"
-              ${condition.operator === 'empty' || condition.operator === 'not-empty' ? 'disabled' : ''}>
+            <input type="text" class="condition-value" 
+              data-group-id="${group.id}" 
+              data-condition-id="${condition.id}"
+              value="${escapeHtml(condition.value)}"
+              placeholder="Filter value"
+              ${isEmptyOperator ? 'disabled' : ''}>
           </div>
-          <div class=\"regex-toggle\">
-            <input type=\"checkbox\" 
-              class=\"condition-regex\" 
-              id=\"regex-${condition.id}\"
-              data-group-id=\"${group.id}\" 
-              data-condition-id=\"${condition.id}\"
+          <div class="filter-field filter-multiselect" ${isMultiSelect ? '' : 'style="display:none;"'}>
+            <label>Values (Ctrl/Cmd+Click for multiple)</label>
+            <select multiple class="condition-values" 
+              data-group-id="${group.id}" 
+              data-condition-id="${condition.id}"
+              size="5">
+              ${fieldValues.map(val => {
+                const selected = condition.values && condition.values.includes(val) ? 'selected' : '';
+                return `<option value="${escapeHtml(val)}" ${selected}>${escapeHtml(val)}</option>`;
+              }).join('')}
+            </select>
+          </div>
+          <div class="regex-toggle" ${isMultiSelect || isEmptyOperator ? 'style="display:none;"' : ''}>
+            <input type="checkbox" 
+              class="condition-regex" 
+              id="regex-${condition.id}"
+              data-group-id="${group.id}" 
+              data-condition-id="${condition.id}"
               ${condition.useRegex ? 'checked' : ''}>
-            <label for=\"regex-${condition.id}\">Regex</label>
+            <label for="regex-${condition.id}">Regex</label>
           </div>
-          <button class=\"remove-condition-btn\" 
-            data-group-id=\"${group.id}\" 
-            data-condition-id=\"${condition.id}\">×</button>
+          <div class="not-toggle">
+            <input type="checkbox" 
+              class="condition-negate" 
+              id="negate-${condition.id}"
+              data-group-id="${group.id}" 
+              data-condition-id="${condition.id}"
+              ${condition.negate ? 'checked' : ''}>
+            <label for="negate-${condition.id}">NOT</label>
+          </div>
+          <button class="remove-condition-btn" 
+            data-group-id="${group.id}" 
+            data-condition-id="${condition.id}">×</button>
         </div>
       `;
     });
@@ -438,6 +513,14 @@ function attachFilterEventListeners() {
   document.querySelectorAll('.condition-field').forEach(select => {
     select.addEventListener('change', (e) => {
       updateConditionField(e.target);
+      // Re-render to update available values for multi-select
+      const groupId = parseInt(e.target.dataset.groupId);
+      const conditionId = parseInt(e.target.dataset.conditionId);
+      const group = state.filterGroups.find(g => g.id === groupId);
+      const condition = group?.conditions.find(c => c.id === conditionId);
+      if (condition && condition.operator === 'in-list') {
+        renderFilterGroups();
+      }
     });
   });
   
@@ -445,18 +528,8 @@ function attachFilterEventListeners() {
   document.querySelectorAll('.condition-operator').forEach(select => {
     select.addEventListener('change', (e) => {
       updateConditionField(e.target);
-      
-      // Enable/disable value input for empty/not-empty operators
-      const groupId = parseInt(e.target.dataset.groupId);
-      const conditionId = parseInt(e.target.dataset.conditionId);
-      const valueInput = document.querySelector(`.condition-value[data-group-id=\"${groupId}\"][data-condition-id=\"${conditionId}\"]`);
-      if (valueInput) {
-        const operator = e.target.value;
-        valueInput.disabled = (operator === 'empty' || operator === 'not-empty');
-        if (valueInput.disabled) {
-          valueInput.value = '';
-        }
-      }
+      // Re-render to show/hide appropriate input fields
+      renderFilterGroups();
     });
   });
   
@@ -467,8 +540,30 @@ function attachFilterEventListeners() {
     });
   });
   
+  // Multi-select values changes
+  document.querySelectorAll('.condition-values').forEach(select => {
+    select.addEventListener('change', (e) => {
+      const groupId = parseInt(e.target.dataset.groupId);
+      const conditionId = parseInt(e.target.dataset.conditionId);
+      const group = state.filterGroups.find(g => g.id === groupId);
+      if (!group) return;
+      
+      const condition = group.conditions.find(c => c.id === conditionId);
+      if (!condition) return;
+      
+      condition.values = Array.from(e.target.selectedOptions).map(opt => opt.value);
+    });
+  });
+  
   // Regex checkbox changes
   document.querySelectorAll('.condition-regex').forEach(checkbox => {
+    checkbox.addEventListener('change', (e) => {
+      updateConditionField(e.target);
+    });
+  });
+  
+  // NOT checkbox changes
+  document.querySelectorAll('.condition-negate').forEach(checkbox => {
     checkbox.addEventListener('change', (e) => {
       updateConditionField(e.target);
     });
@@ -492,156 +587,12 @@ function updateConditionField(element) {
     condition.value = element.value;
   } else if (element.classList.contains('condition-regex')) {
     condition.useRegex = element.checked;
+  } else if (element.classList.contains('condition-negate')) {
+    condition.negate = element.checked;
   }
 }
 
-// ===== Pivot Table Visibility Controls =====
-function initializePivotVisibility() {
-  // Initialize visibility sets with all values visible
-  if (state.pivotData) {
-    state.pivotVisibility.rows = new Set(state.pivotData.rowValues);
-    state.pivotVisibility.cols = new Set(state.pivotData.colValues);
-  }
-}
-
-function renderPivotVisibilityControls() {
-  if (!state.pivotData) return;
-  
-  const rowToggles = document.getElementById('row-visibility-toggles');
-  const colToggles = document.getElementById('col-visibility-toggles');
-  const hiddenRowsSelect = document.getElementById('hidden-rows-select');
-  const hiddenColsSelect = document.getElementById('hidden-cols-select');
-  
-  // Get visible and hidden items
-  const visibleRows = state.pivotData.rowValues.filter(v => state.pivotVisibility.rows.has(v));
-  const hiddenRows = state.pivotData.rowValues.filter(v => !state.pivotVisibility.rows.has(v));
-  const visibleCols = state.pivotData.colValues.filter(v => state.pivotVisibility.cols.has(v));
-  const hiddenCols = state.pivotData.colValues.filter(v => !state.pivotVisibility.cols.has(v));
-  
-  // Render visible row toggles
-  let rowHtml = '';
-  visibleRows.forEach(rowVal => {
-    rowHtml += `
-      <div class="visibility-toggle-item">
-        <input type="checkbox" id="row-vis-${escapeHtml(rowVal)}" 
-          class="row-visibility-toggle" 
-          data-value="${escapeHtml(rowVal)}" 
-          checked>
-        <label for="row-vis-${escapeHtml(rowVal)}">${escapeHtml(rowVal)}</label>
-      </div>
-    `;
-  });
-  rowToggles.innerHTML = rowHtml || '<p class="no-items">No visible rows</p>';
-  
-  // Render visible column toggles
-  let colHtml = '';
-  visibleCols.forEach(colVal => {
-    colHtml += `
-      <div class="visibility-toggle-item">
-        <input type="checkbox" id="col-vis-${escapeHtml(colVal)}" 
-          class="col-visibility-toggle" 
-          data-value="${escapeHtml(colVal)}" 
-          checked>
-        <label for="col-vis-${escapeHtml(colVal)}">${escapeHtml(colVal)}</label>
-      </div>
-    `;
-  });
-  colToggles.innerHTML = colHtml || '<p class="no-items">No visible columns</p>';
-  
-  // Render hidden rows select
-  let hiddenRowsHtml = '';
-  hiddenRows.forEach(rowVal => {
-    hiddenRowsHtml += `<option value="${escapeHtml(rowVal)}">${escapeHtml(rowVal)}</option>`;
-  });
-  hiddenRowsSelect.innerHTML = hiddenRowsHtml || '<option disabled>No hidden rows</option>';
-  
-  // Render hidden columns select
-  let hiddenColsHtml = '';
-  hiddenCols.forEach(colVal => {
-    hiddenColsHtml += `<option value="${escapeHtml(colVal)}">${escapeHtml(colVal)}</option>`;
-  });
-  hiddenColsSelect.innerHTML = hiddenColsHtml || '<option disabled>No hidden columns</option>';
-  
-  // Attach event listeners
-  attachPivotVisibilityListeners();
-}
-
-function attachPivotVisibilityListeners() {
-  // Row visibility toggles
-  document.querySelectorAll('.row-visibility-toggle').forEach(checkbox => {
-    checkbox.addEventListener('change', (e) => {
-      const value = e.target.dataset.value;
-      if (e.target.checked) {
-        state.pivotVisibility.rows.add(value);
-      } else {
-        state.pivotVisibility.rows.delete(value);
-      }
-      updatePivotDisplay();
-      renderPivotVisibilityControls();
-    });
-  });
-  
-  // Column visibility toggles
-  document.querySelectorAll('.col-visibility-toggle').forEach(checkbox => {
-    checkbox.addEventListener('change', (e) => {
-      const value = e.target.dataset.value;
-      if (e.target.checked) {
-        state.pivotVisibility.cols.add(value);
-      } else {
-        state.pivotVisibility.cols.delete(value);
-      }
-      updatePivotDisplay();
-      renderPivotVisibilityControls();
-    });
-  });
-}
-
-function toggleAllRows(show) {
-  if (show) {
-    state.pivotData.rowValues.forEach(v => state.pivotVisibility.rows.add(v));
-  } else {
-    state.pivotVisibility.rows.clear();
-  }
-  updatePivotDisplay();
-  renderPivotVisibilityControls();
-}
-
-function toggleAllCols(show) {
-  if (show) {
-    state.pivotData.colValues.forEach(v => state.pivotVisibility.cols.add(v));
-  } else {
-    state.pivotVisibility.cols.clear();
-  }
-  updatePivotDisplay();
-  renderPivotVisibilityControls();
-}
-
-function addHiddenRows() {
-  const select = document.getElementById('hidden-rows-select');
-  const selectedOptions = Array.from(select.selectedOptions).map(opt => opt.value);
-  selectedOptions.forEach(value => state.pivotVisibility.rows.add(value));
-  updatePivotDisplay();
-  renderPivotVisibilityControls();
-}
-
-function addHiddenCols() {
-  const select = document.getElementById('hidden-cols-select');
-  const selectedOptions = Array.from(select.selectedOptions).map(opt => opt.value);
-  selectedOptions.forEach(value => state.pivotVisibility.cols.add(value));
-  updatePivotDisplay();
-  renderPivotVisibilityControls();
-}
-
-function updatePivotDisplay() {
-  if (!state.pivotData || !state.filteredRecordsCache) return;
-  
-  const visibleRows = state.pivotData.rowValues.filter(v => state.pivotVisibility.rows.has(v));
-  const visibleCols = state.pivotData.colValues.filter(v => state.pivotVisibility.cols.has(v));
-  
-  renderPivotTableWithVisibility(state.pivotData, visibleRows, visibleCols, 
-    state.filteredRecordsCache.length, state.records.length);
-}
-
+// ===== Pivot Refresh =====
 function refreshPivotWithFilters() {
   // Reapply filters and regenerate pivot table
   const rowField = state.pivotConfig.rowField;
@@ -653,17 +604,11 @@ function refreshPivotWithFilters() {
   state.filteredRecordsCache = filteredRecords;
   
   state.pivotData = generatePivotTable(filteredRecords, rowField, colField);
-  
-  // Reset visibility to show all
-  initializePivotVisibility();
-  
-  // Render the updated pivot table
-  renderPivotTableWithVisibility(state.pivotData, state.pivotData.rowValues, 
-    state.pivotData.colValues, filteredRecords.length, state.records.length);
+  renderPivotTable(state.pivotData, filteredRecords.length, state.records.length);
 }
 
 // ===== Rendering Functions =====
-function renderPivotTableWithVisibility(pivotData, visibleRows, visibleCols, filteredCount, totalCount) {
+function renderPivotTable(pivotData, filteredCount, totalCount) {
   const table = document.getElementById('pivot-table');
   const info = document.getElementById('pivot-info');
   
@@ -671,31 +616,26 @@ function renderPivotTableWithVisibility(pivotData, visibleRows, visibleCols, fil
     ? ` (${filteredCount} after filtering from ${totalCount} total)` 
     : '';
   
-  const visibilityInfo = (visibleRows.length < pivotData.rowValues.length || 
-                          visibleCols.length < pivotData.colValues.length)
-    ? ` | <strong>Showing:</strong> ${visibleRows.length}/${pivotData.rowValues.length} rows, ${visibleCols.length}/${pivotData.colValues.length} cols`
-    : '';
-  
   info.innerHTML = `
     <strong>Rows:</strong> ${pivotData.rowField} | 
     <strong>Columns:</strong> ${pivotData.colField} | 
-    <strong>Records:</strong> ${filteredCount}${filterInfo}${visibilityInfo}
+    <strong>Records:</strong> ${filteredCount}${filterInfo}
   `;
 
   // Build table HTML
   let html = '<thead><tr><th></th>';
   
-  // Column headers (only visible ones)
-  visibleCols.forEach((colVal) => {
+  // Column headers
+  pivotData.colValues.forEach((colVal) => {
     html += `<th>${escapeHtml(colVal)}</th>`;
   });
   html += '</tr></thead><tbody>';
 
-  // Rows (only visible ones)
-  visibleRows.forEach((rowVal) => {
+  // Rows
+  pivotData.rowValues.forEach((rowVal) => {
     html += `<tr><th>${escapeHtml(rowVal)}</th>`;
     
-    visibleCols.forEach((colVal) => {
+    pivotData.colValues.forEach((colVal) => {
       const key = `${rowVal}|||${colVal}`;
       const entries = pivotData.pivotMap.get(key) || [];
       const count = entries.length;
@@ -721,13 +661,6 @@ function renderPivotTableWithVisibility(pivotData, visibleRows, visibleCols, fil
       showDatasheet(rowVal, colVal);
     });
   });
-}
-
-function renderPivotTable(pivotData, filteredCount, totalCount) {
-  // Initialize visibility and render with all rows/cols visible
-  initializePivotVisibility();
-  renderPivotTableWithVisibility(pivotData, pivotData.rowValues, pivotData.colValues, 
-    filteredCount, totalCount);
 }
 
 function showDatasheet(rowVal, colVal) {
@@ -1030,41 +963,9 @@ function init() {
     }
   });
 
-  // Pivot visibility controls
-  document.getElementById('toggle-pivot-visibility-btn').addEventListener('click', () => {
-    const section = document.getElementById('pivot-visibility-section');
-    section.classList.toggle('hidden');
-    if (!section.classList.contains('hidden')) {
-      renderPivotVisibilityControls();
-    }
-  });
-
+  // Pivot refresh button
   document.getElementById('refresh-pivot-btn').addEventListener('click', () => {
     refreshPivotWithFilters();
-  });
-
-  document.getElementById('show-all-rows').addEventListener('click', () => {
-    toggleAllRows(true);
-  });
-
-  document.getElementById('hide-all-rows').addEventListener('click', () => {
-    toggleAllRows(false);
-  });
-
-  document.getElementById('show-all-cols').addEventListener('click', () => {
-    toggleAllCols(true);
-  });
-
-  document.getElementById('hide-all-cols').addEventListener('click', () => {
-    toggleAllCols(false);
-  });
-
-  document.getElementById('add-hidden-rows-btn').addEventListener('click', () => {
-    addHiddenRows();
-  });
-
-  document.getElementById('add-hidden-cols-btn').addEventListener('click', () => {
-    addHiddenCols();
   });
 
   // Navigation buttons

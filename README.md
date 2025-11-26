@@ -9,8 +9,11 @@ A Progressive Web App (PWA) for building pivot tables from Dekereke XML database
 - 🔄 **Auto-Updates**: Automatically updates when new versions are available
 - 🔒 **Privacy-First**: No data leaves your device
 - 📊 **Interactive Pivot Tables**: Cross-tabulate any two fields
+- 🔍 **Advanced Filtering**: Multiple filter groups with regex, multi-select, and NOT operators
+- 🎯 **Multi-Select Filters**: Choose multiple values from dropdown lists
+- ❌ **NOT Operator**: Negate any filter condition with a checkbox
 - 📋 **Data Filtering**: Click cells to view matching records
-- 👁️ **Column Control**: Show/hide and reorder columns
+- ⚙️ **Column Control**: Show/hide and reorder columns in datasheet view
 - 💾 **Persistent Settings**: Column preferences saved across sessions
 - 📱 **Responsive Design**: Works on desktop, tablet, and mobile
 
@@ -30,11 +33,21 @@ A Progressive Web App (PWA) for building pivot tables from Dekereke XML database
    Click "Choose XML File" and select your Dekereke XML database file
 
 4. **Build a pivot table**:
-   - Select a field for rows (e.g., "ToneMelody")
+   - Select a field for rows (e.g., "Surface_Melody")
    - Select a field for columns (e.g., "SyllableProfile")
+   - (Optional) Add advanced filters:
+     - Use multiple filter groups (OR logic between groups)
+     - Add multiple conditions per group (AND/OR logic within group)
+     - Choose from operators: equals, contains, starts-with, in-list, regex, empty, etc.
+     - Use multi-select dropdown for "in-list" to select multiple values
+     - Check NOT checkbox to negate any condition
    - Click "Generate Pivot Table"
 
-5. **Explore your data**:
+5. **Update your pivot table**:
+   - Click "🔄 Refresh with Current Filters" to update after changing filters
+   - Filters control what records appear in the pivot table
+
+6. **Explore your data**:
    - Click any cell to see matching records
    - Show/hide columns as needed
    - Reorder columns by clicking the arrow buttons
@@ -141,7 +154,7 @@ dekereke_pivot_tables/
 ### Update the Version
 When you make changes, update the cache version in `docs/sw.js`:
 ```javascript
-const CACHE_NAME = 'dekereke-pivot-v1.0.1'; // Increment version
+const CACHE_NAME = 'dekereke-pivot-v1.2.1'; // Increment version
 ```
 
 ### Modify Icons

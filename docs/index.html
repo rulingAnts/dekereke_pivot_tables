@@ -77,43 +77,10 @@
                     <h2>Pivot Table</h2>
                     <div class="pivot-controls">
                         <button id="refresh-pivot-btn" class="secondary-btn">🔄 Refresh with Current Filters</button>
-                        <button id="toggle-pivot-visibility-btn" class="secondary-btn">⚙️ Show/Hide Rows & Columns</button>
                         <button id="back-to-config" class="secondary-btn">← Back to Configuration</button>
                     </div>
                 </div>
                 <div id="pivot-info" class="pivot-info"></div>
-                
-                <!-- Pivot Visibility Controls -->
-                <div id="pivot-visibility-section" class="pivot-visibility-section hidden">
-                    <div class="visibility-controls-grid">
-                        <div class="visibility-control-panel">
-                            <h3>Row Visibility</h3>
-                            <div class="visibility-actions">
-                                <button class="small-btn" id="show-all-rows">Show All</button>
-                                <button class="small-btn" id="hide-all-rows">Hide All</button>
-                            </div>
-                            <div id="row-visibility-toggles" class="visibility-toggles"></div>
-                            <div class="hidden-items-section">
-                                <h4>Hidden Rows</h4>
-                                <select id="hidden-rows-select" size="5" class="hidden-items-select"></select>
-                                <button id="add-hidden-rows-btn" class="small-btn">+ Add Selected</button>
-                            </div>
-                        </div>
-                        <div class="visibility-control-panel">
-                            <h3>Column Visibility</h3>
-                            <div class="visibility-actions">
-                                <button class="small-btn" id="show-all-cols">Show All</button>
-                                <button class="small-btn" id="hide-all-cols">Hide All</button>
-                            </div>
-                            <div id="col-visibility-toggles" class="visibility-toggles"></div>
-                            <div class="hidden-items-section">
-                                <h4>Hidden Columns</h4>
-                                <select id="hidden-cols-select" size="5" class="hidden-items-select"></select>
-                                <button id="add-hidden-cols-btn" class="small-btn">+ Add Selected</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
                 
                 <div class="table-wrapper">
                     <table id="pivot-table"></table>
