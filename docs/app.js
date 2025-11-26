@@ -702,20 +702,19 @@ function renderDatasheet(records) {
 
   const prefs = state.columnPreferences[state.database];
   const visibleFields = prefs.order.filter(f => prefs.visible[f]);
+  const hiddenFields = prefs.order.filter(f => !prefs.visible[f]);
 
-  // Render column toggles
-  renderColumnToggles();
+  // Update hidden columns dropdown
+  updateHiddenColumnsDropdown(hiddenFields);
 
-  // Render table header
+  // Render table header with X buttons and drag handles
   let headerHtml = '<tr>';
-  visibleFields.forEach((field) => {
-    headerHtml += `<th>
+  visibleFields.forEach((field, index) => {
+    headerHtml += `<th draggable="true" data-field="${escapeHtml(field)}" data-index="${index}" class="draggable-header">
       <div class="header-cell">
-        <span>${escapeHtml(field)}</span>
-        <div class="header-controls">
-          <button class="move-btn" data-field="${escapeHtml(field)}" data-dir="left" title="Move left">◀</button>
-          <button class="move-btn" data-field="${escapeHtml(field)}" data-dir="right" title="Move right">▶</button>
-        </div>
+        <span class="drag-handle" title="Drag to reorder">⋮⋮</span>
+        <span class="header-label">${escapeHtml(field)}</span>
+        <button class="hide-column-btn" data-field="${escapeHtml(field)}" title="Hide column">✕</button>
       </div>
     </th>`;
   });
@@ -734,61 +733,125 @@ function renderDatasheet(records) {
   });
   body.innerHTML = bodyHtml;
 
-  // Add move button handlers
-  header.querySelectorAll('.move-btn').forEach((btn) => {
+  // Add hide button handlers
+  header.querySelectorAll('.hide-column-btn').forEach((btn) => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
       const field = e.target.dataset.field;
-      const dir = e.target.dataset.dir;
-      moveColumn(field, dir);
+      hideColumn(field);
     });
   });
+
+  // Add drag and drop handlers
+  attachDragAndDropHandlers();
 }
 
-function renderColumnToggles() {
-  const container = document.getElementById('column-toggles');
+function hideColumn(field) {
   const prefs = state.columnPreferences[state.database];
-  
-  let html = '';
-  state.fields.forEach((field) => {
-    const checked = prefs.visible[field] ? 'checked' : '';
-    html += `
-      <label class="column-toggle">
-        <input type="checkbox" data-field="${escapeHtml(field)}" ${checked}>
-        <span>${escapeHtml(field)}</span>
-      </label>
-    `;
-  });
-  
-  container.innerHTML = html;
-
-  // Add toggle handlers
-  container.querySelectorAll('input[type="checkbox"]').forEach((checkbox) => {
-    checkbox.addEventListener('change', (e) => {
-      const field = e.target.dataset.field;
-      toggleColumnVisibility(field);
-    });
-  });
-}
-
-function toggleColumnVisibility(field) {
-  const prefs = state.columnPreferences[state.database];
-  prefs.visible[field] = !prefs.visible[field];
+  prefs.visible[field] = false;
   saveColumnPreferences();
   renderDatasheet(state.currentFilter.records);
 }
 
-function moveColumn(field, direction) {
+function showColumn(field) {
   const prefs = state.columnPreferences[state.database];
-  const currentIndex = prefs.order.indexOf(field);
+  prefs.visible[field] = true;
+  saveColumnPreferences();
+  renderDatasheet(state.currentFilter.records);
+}
+
+function updateHiddenColumnsDropdown(hiddenFields) {
+  const btn = document.getElementById('show-hidden-columns-btn');
+  const dropdown = document.getElementById('hidden-columns-dropdown');
+  const countSpan = document.getElementById('hidden-count');
   
-  if (direction === 'left' && currentIndex > 0) {
-    [prefs.order[currentIndex], prefs.order[currentIndex - 1]] = 
-    [prefs.order[currentIndex - 1], prefs.order[currentIndex]];
-  } else if (direction === 'right' && currentIndex < prefs.order.length - 1) {
-    [prefs.order[currentIndex], prefs.order[currentIndex + 1]] = 
-    [prefs.order[currentIndex + 1], prefs.order[currentIndex]];
+  countSpan.textContent = hiddenFields.length;
+  
+  if (hiddenFields.length === 0) {
+    btn.disabled = true;
+    btn.style.opacity = '0.5';
+    dropdown.classList.add('hidden');
+  } else {
+    btn.disabled = false;
+    btn.style.opacity = '1';
   }
+  
+  // Render hidden columns list
+  let html = '<div class="dropdown-header">Hidden Columns</div>';
+  hiddenFields.forEach(field => {
+    html += `
+      <div class="dropdown-item" data-field="${escapeHtml(field)}">
+        <span>${escapeHtml(field)}</span>
+        <button class="show-column-btn" data-field="${escapeHtml(field)}" title="Show column">👁</button>
+      </div>
+    `;
+  });
+  dropdown.innerHTML = html;
+  
+  // Add show button handlers
+  dropdown.querySelectorAll('.show-column-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const field = e.target.dataset.field;
+      showColumn(field);
+    });
+  });
+}
+
+function attachDragAndDropHandlers() {
+  const headers = document.querySelectorAll('.draggable-header');
+  let draggedElement = null;
+  let draggedField = null;
+  
+  headers.forEach(header => {
+    header.addEventListener('dragstart', (e) => {
+      draggedElement = header;
+      draggedField = header.dataset.field;
+      header.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    
+    header.addEventListener('dragend', (e) => {
+      header.classList.remove('dragging');
+      document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+    });
+    
+    header.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      
+      if (header !== draggedElement) {
+        header.classList.add('drag-over');
+      }
+    });
+    
+    header.addEventListener('dragleave', (e) => {
+      header.classList.remove('drag-over');
+    });
+    
+    header.addEventListener('drop', (e) => {
+      e.preventDefault();
+      header.classList.remove('drag-over');
+      
+      if (header !== draggedElement) {
+        const targetField = header.dataset.field;
+        reorderColumns(draggedField, targetField);
+      }
+    });
+  });
+}
+
+function reorderColumns(draggedField, targetField) {
+  const prefs = state.columnPreferences[state.database];
+  const draggedIndex = prefs.order.indexOf(draggedField);
+  const targetIndex = prefs.order.indexOf(targetField);
+  
+  // Remove dragged field from its position
+  prefs.order.splice(draggedIndex, 1);
+  
+  // Insert at target position
+  const newTargetIndex = prefs.order.indexOf(targetField);
+  prefs.order.splice(newTargetIndex, 0, draggedField);
   
   saveColumnPreferences();
   renderDatasheet(state.currentFilter.records);
@@ -975,6 +1038,21 @@ function init() {
 
   document.getElementById('back-to-pivot').addEventListener('click', () => {
     showSection('pivot');
+  });
+
+  // Show hidden columns dropdown toggle
+  document.getElementById('show-hidden-columns-btn').addEventListener('click', () => {
+    const dropdown = document.getElementById('hidden-columns-dropdown');
+    dropdown.classList.toggle('hidden');
+  });
+  
+  // Close dropdown when clicking outside
+  document.addEventListener('click', (e) => {
+    const dropdown = document.getElementById('hidden-columns-dropdown');
+    const btn = document.getElementById('show-hidden-columns-btn');
+    if (!dropdown.contains(e.target) && !btn.contains(e.target)) {
+      dropdown.classList.add('hidden');
+    }
   });
 
   // Update button

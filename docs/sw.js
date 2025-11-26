@@ -1,4 +1,4 @@
-const CACHE_NAME = 'dekereke-pivot-v1.2.0';
+const CACHE_NAME = 'dekereke-pivot-v1.3.0';
 const urlsToCache = [
   './',
   './index.html',
