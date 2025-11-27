@@ -220,7 +220,11 @@ Press `F12` or `Cmd+Option+I` to open browser DevTools and view console logs.
 
 ## License
 
-This project is open source and available under the MIT License.
+This project is open source and available under the GNU Affero General Public License v3.0 (AGPL-3.0). See the [LICENSE](LICENSE) file for details.
+
+## Attribution
+
+This project was created with the assistance of GitHub Copilot.
 
 ## Support
 
