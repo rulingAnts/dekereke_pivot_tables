@@ -123,6 +123,23 @@ function parseXMLFile(file) {
   });
 }
 
+function parseXMLString(xmlText) {
+  try {
+    const parser = new DOMParser();
+    const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
+    
+    // Check for parsing errors
+    const parserError = xmlDoc.querySelector('parsererror');
+    if (parserError) {
+      throw new Error('XML parsing error: ' + parserError.textContent);
+    }
+    
+    return xmlDoc;
+  } catch (error) {
+    throw error;
+  }
+}
+
 function extractDataFromXML(xmlDoc) {
   const dataForms = xmlDoc.querySelectorAll('data_form');
   const records = [];
@@ -151,6 +168,98 @@ function extractDataFromXML(xmlDoc) {
   const fields = Array.from(fieldSet).sort();
   
   return { records, fields };
+}
+
+function checkForXMLInHash() {
+  const rawHash = window.location.hash;
+  const hash = decodeURIComponent(rawHash.substring(1));
+  console.log('Raw location.hash:', rawHash);
+  console.log('Hash length:', hash.length);
+  
+  if (!hash) {
+    console.log('No hash found, skipping XML import');
+    return;
+  }
+  
+  // Check if Pako is loaded
+  if (typeof pako === 'undefined') {
+    console.log('Pako not loaded yet, retrying in 100ms...');
+    setTimeout(checkForXMLInHash, 100);
+    return;
+  }
+  
+  try {
+    console.log('Processing hash data...');
+    // Try to decode as base64
+    let xmlText;
+    try {
+      console.log('Trying gzip decompression...');
+      // First try to decompress as gzip
+      const compressed = Uint8Array.from(atob(hash), c => c.charCodeAt(0));
+      xmlText = pako.inflate(compressed, { to: 'string' });
+      console.log('Gzip decompression successful');
+    } catch (gzipError) {
+      console.log('Gzip failed, trying plain base64:', gzipError.message);
+      // If gzip fails, try plain base64
+      xmlText = atob(hash);
+    }
+    
+    console.log('XML text length:', xmlText.length);
+    console.log('First 200 chars:', xmlText.substring(0, 200));
+    
+    // Skip UTF-16 conversion for now - test data is UTF-8
+    // Handle UTF-16 if needed
+    // if (xmlText.charCodeAt(0) === 0xFEFF || xmlText.charCodeAt(1) === 0x00) {
+    //   console.log('Detected UTF-16, converting...');
+    //   // Convert UTF-16 to UTF-8
+    //   xmlText = new TextDecoder('utf-16le').decode(new Uint8Array(xmlText.split('').map(c => c.charCodeAt(0))));
+    // }
+    
+    console.log('Parsing XML...');
+    // Parse XML
+    const xmlDoc = parseXMLString(xmlText);
+    
+    console.log('Extracting data...');
+    // Extract data
+    const { records, fields } = extractDataFromXML(xmlDoc);
+    
+    console.log('Records found:', records.length, 'Fields:', fields.length);
+    
+    if (records.length === 0) {
+      throw new Error('No records found in XML data.');
+    }
+    
+    // Update state
+    state.database = 'URL Import';
+    state.records = records;
+    state.fields = fields;
+    
+    // Show success message
+    const fileInfo = document.getElementById('file-info');
+    fileInfo.innerHTML = `
+      <p class="success">✓ Loaded XML data from URL</p>
+      <p>${records.length} records, ${fields.length} fields</p>
+    `;
+    fileInfo.classList.remove('hidden');
+    document.getElementById('file-label-text').textContent = 'URL Import';
+    
+    // Populate field selects
+    populateFieldSelects();
+    
+    // Show config section
+    showSection('config');
+    
+    // Clear hash to prevent re-processing
+    window.location.hash = '';
+    
+    console.log('XML import successful!');
+    
+  } catch (error) {
+    console.error('Error processing XML from hash:', error);
+    const fileInfo = document.getElementById('file-info');
+    fileInfo.innerHTML = `<p class="error">Error loading XML from URL: ${escapeHtml(error.message)}</p>`;
+    fileInfo.classList.remove('hidden');
+  }
 }
 
 // ===== Pivot Table Generation =====
@@ -998,6 +1107,9 @@ function init() {
 
   // Load saved preferences
   loadColumnPreferences();
+
+  // Check for XML data in URL hash
+  checkForXMLInHash();
 
   // Set up online/offline indicators
   updateOnlineStatus();

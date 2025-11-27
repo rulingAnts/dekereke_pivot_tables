@@ -1,0 +1,23 @@
+<?xml version='1.0' encoding='utf-16'?>
+<phon_data>
+	<data_form>
+		<Reference>0012</Reference>
+		<Gloss>descend.INCMP</Gloss>
+		<IndonesianGloss>turun</IndonesianGloss>
+		<Category>DUPLICATE</Category>
+		<Type />
+		<SyllableProfile>VVCV</SyllableProfile>
+		<Phonetic>oɯdo</Phonetic>
+		<Pitch />
+	</data_form>
+	<data_form>
+		<Reference>0013</Reference>
+		<Gloss>run.INCMP</Gloss>
+		<IndonesianGloss>lari</IndonesianGloss>
+		<Category>VERB</Category>
+		<Type />
+		<SyllableProfile>VCV</SyllableProfile>
+		<Phonetic>ɯdo</Phonetic>
+		<Pitch />
+	</data_form>
+</phon_data>
