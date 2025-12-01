@@ -131,10 +131,10 @@ function extractDataFromXML(xmlDoc) {
   dataForms.forEach((form) => {
     const record = {};
     
-    // Get all child elements (fields)
+    // Get all child elements (fields) - include all fields even if empty
     Array.from(form.children).forEach((child) => {
-      // Skip nested structures like qvp_acoustic_data_
-      if (child.children.length === 0 || child.textContent.trim() !== '') {
+      // Skip nested structures (elements with children)
+      if (child.children.length === 0) {
         const fieldName = child.tagName;
         const fieldValue = child.textContent.trim();
         
@@ -673,23 +673,56 @@ function renderPivotTable(pivotData, filteredCount, totalCount) {
     btn.addEventListener('click', (e) => {
       const rowVal = e.target.dataset.row;
       const colVal = e.target.dataset.col;
-      showDatasheet(rowVal, colVal);
+      showReferenceModal(rowVal, colVal);
     });
   });
 }
 
-function showDatasheet(rowVal, colVal) {
+function showReferenceModal(rowVal, colVal) {
   const key = `${rowVal}|||${colVal}`;
   const filteredRecords = state.pivotData.pivotMap.get(key) || [];
   
-  state.currentFilter = {
-    rowVal,
-    colVal,
-    records: filteredRecords
-  };
-
-  renderDatasheet(filteredRecords);
-  showSection('datasheet');
+  // Extract Reference numbers
+  const references = filteredRecords
+    .map(record => record.Reference)
+    .filter(ref => ref) // Remove empty references
+    .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  
+  // Create modal HTML
+  const modal = document.getElementById('reference-modal');
+  const modalTitle = document.getElementById('reference-modal-title');
+  const modalBody = document.getElementById('reference-modal-body');
+  
+  modalTitle.textContent = `References: ${state.pivotData.rowField}=${rowVal}, ${state.pivotData.colField}=${colVal}`;
+  
+  if (references.length === 0) {
+    modalBody.innerHTML = '<p class="no-references">No references found</p>';
+  } else {
+    const referenceText = references.join(', ');
+    modalBody.innerHTML = `
+      <div class="reference-list">
+        <p class="reference-count">${references.length} reference(s)</p>
+        <textarea id="reference-textarea" readonly rows="10">${referenceText}</textarea>
+        <button id="copy-references-btn" class="primary-btn">📋 Copy References</button>
+      </div>
+    `;
+  }
+  
+  modal.classList.remove('hidden');
+  
+  // Add copy button handler
+  const copyBtn = document.getElementById('copy-references-btn');
+  if (copyBtn) {
+    copyBtn.addEventListener('click', () => {
+      const textarea = document.getElementById('reference-textarea');
+      textarea.select();
+      document.execCommand('copy');
+      copyBtn.textContent = '✓ Copied!';
+      setTimeout(() => {
+        copyBtn.textContent = '📋 Copy References';
+      }, 2000);
+    });
+  }
 }
 
 function renderDatasheet(records) {
@@ -885,13 +918,15 @@ function loadColumnPreferences() {
 
 // ===== UI Helper Functions =====
 function showSection(sectionName) {
-  const sections = ['upload', 'config', 'pivot', 'datasheet'];
+  const sections = ['upload', 'config', 'pivot'];
   sections.forEach((section) => {
     const el = document.getElementById(`${section}-section`);
-    if (section === sectionName) {
-      el.classList.remove('hidden');
-    } else {
-      el.classList.add('hidden');
+    if (el) {
+      if (section === sectionName) {
+        el.classList.remove('hidden');
+      } else {
+        el.classList.add('hidden');
+      }
     }
   });
   state.currentView = sectionName;
@@ -1041,6 +1076,18 @@ function init() {
     }
   });
 
+  // Reference modal close button
+  document.getElementById('close-reference-modal').addEventListener('click', () => {
+    document.getElementById('reference-modal').classList.add('hidden');
+  });
+
+  // Close reference modal when clicking outside
+  document.getElementById('reference-modal').addEventListener('click', (e) => {
+    if (e.target.id === 'reference-modal') {
+      document.getElementById('reference-modal').classList.add('hidden');
+    }
+  });
+
   // Pivot refresh button
   document.getElementById('refresh-pivot-btn').addEventListener('click', () => {
     refreshPivotWithFilters();
@@ -1049,25 +1096,6 @@ function init() {
   // Navigation buttons
   document.getElementById('back-to-config').addEventListener('click', () => {
     showSection('config');
-  });
-
-  document.getElementById('back-to-pivot').addEventListener('click', () => {
-    showSection('pivot');
-  });
-
-  // Show hidden columns dropdown toggle
-  document.getElementById('show-hidden-columns-btn').addEventListener('click', () => {
-    const dropdown = document.getElementById('hidden-columns-dropdown');
-    dropdown.classList.toggle('hidden');
-  });
-  
-  // Close dropdown when clicking outside
-  document.addEventListener('click', (e) => {
-    const dropdown = document.getElementById('hidden-columns-dropdown');
-    const btn = document.getElementById('show-hidden-columns-btn');
-    if (!dropdown.contains(e.target) && !btn.contains(e.target)) {
-      dropdown.classList.add('hidden');
-    }
   });
 
   // Update button

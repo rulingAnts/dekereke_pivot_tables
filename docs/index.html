@@ -103,28 +103,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
                 </div>
             </section>
 
-            <!-- Datasheet Section -->
-            <section id="datasheet-section" class="card hidden">
-                <div class="section-header">
-                    <h2>Data View</h2>
-                    <button id="back-to-pivot" class="secondary-btn">← Back to Pivot Table</button>
-                </div>
-                <div id="datasheet-info" class="datasheet-info"></div>
-                
-                <div class="datasheet-controls">
-                    <button id="show-hidden-columns-btn" class="secondary-btn" title="Show hidden columns">
-                        <span class="btn-icon">👁</span> Show Hidden Columns (<span id="hidden-count">0</span>)
-                    </button>
-                    <div id="hidden-columns-dropdown" class="hidden-columns-dropdown hidden"></div>
-                </div>
-
-                <div class="table-wrapper">
-                    <table id="datasheet-table">
-                        <thead id="datasheet-header"></thead>
-                        <tbody id="datasheet-body"></tbody>
-                    </table>
-                </div>
-            </section>
         </main>
 
         <!-- Footer -->
@@ -173,6 +151,18 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
                     <li><code>^[HL]+$</code> - Only H and L characters</li>
                     <li><code>\d{4}</code> - Exactly 4 digits (e.g., Reference IDs)</li>
                 </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reference Modal -->
+    <div id="reference-modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="reference-modal-title">References</h2>
+                <button id="close-reference-modal" class="close-modal">×</button>
+            </div>
+            <div id="reference-modal-body" class="modal-body">
             </div>
         </div>
     </div>
