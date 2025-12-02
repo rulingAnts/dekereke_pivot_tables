@@ -34,8 +34,13 @@ self.addEventListener('install', (event) => {
         return cache.addAll(urlsToCache);
       })
       .then(() => {
+        console.log('[ServiceWorker] Cache complete');
         // Force the waiting service worker to become the active service worker
         return self.skipWaiting();
+      })
+      .catch((error) => {
+        console.error('[ServiceWorker] Cache failed:', error);
+        throw error;
       })
   );
 });
