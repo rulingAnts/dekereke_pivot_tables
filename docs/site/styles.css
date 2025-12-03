@@ -15,3 +15,8 @@ ul{margin:8px 0 0;padding-left:22px}
 .note{color:var(--muted)}
 pre{background:#0b1220;padding:12px;border-radius:10px;overflow:auto}
 .footer{color:var(--muted);font-size:13px;margin-top:16px}
+/* Table of contents */
+.toc{background:#0b1220;border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:12px;margin-bottom:16px}
+.toc h3{margin:0 0 8px}
+.toc ul{list-style:disc;padding-left:22px;margin:0}
+.toc a{text-decoration:none}

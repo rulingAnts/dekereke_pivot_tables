@@ -26,7 +26,71 @@
       <p>Guides for loading XML, building pivots, and copying references.</p>
     </header>
 
-    <section class="card">
+    <section class="card" id="examples-overview">
+      <h2>What Is This Useful For?</h2>
+      <p>This app helps you quickly summarize Dekereke (or similar) linguistic datasets. A common use is exploring tone patterns by cross-tabulating <strong>tone melodies</strong> (rows) against <strong>syllable templates</strong> (columns), or other phonological/morphological categories.</p>
+      <h3>Examples (illustrative layouts)</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div class="card" style="margin:0">
+          <h3>Tone Melodies × Syllable Templates</h3>
+          <table style="width:100%;border-collapse:collapse">
+            <thead>
+              <tr>
+                <th style="text-align:left;border-bottom:1px solid rgba(255,255,255,0.1)">Melody \ Template</th>
+                <th style="text-align:right;border-bottom:1px solid rgba(255,255,255,0.1)">CV</th>
+                <th style="text-align:right;border-bottom:1px solid rgba(255,255,255,0.1)">CVCV</th>
+                <th style="text-align:right;border-bottom:1px solid rgba(255,255,255,0.1)">CVV</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>H</td><td style="text-align:right">12</td><td style="text-align:right">8</td><td style="text-align:right">5</td></tr>
+              <tr><td>L</td><td style="text-align:right">9</td><td style="text-align:right">11</td><td style="text-align:right">4</td></tr>
+              <tr><td>HL</td><td style="text-align:right">7</td><td style="text-align:right">13</td><td style="text-align:right">6</td></tr>
+              <tr><td>LH</td><td style="text-align:right">10</td><td style="text-align:right">6</td><td style="text-align:right">3</td></tr>
+            </tbody>
+          </table>
+          <p class="note">Click a cell in the PWA to see and copy the exact record references for that count.</p>
+        </div>
+        <div class="card" style="margin:0">
+          <h3>Part of Speech × Tone Category</h3>
+          <table style="width:100%;border-collapse:collapse">
+            <thead>
+              <tr>
+                <th style="text-align:left;border-bottom:1px solid rgba(255,255,255,0.1)">POS \ Tone</th>
+                <th style="text-align:right;border-bottom:1px solid rgba(255,255,255,0.1)">H</th>
+                <th style="text-align:right;border-bottom:1px solid rgba(255,255,255,0.1)">L</th>
+                <th style="text-align:right;border-bottom:1px solid rgba(255,255,255,0.1)">HL</th>
+                <th style="text-align:right;border-bottom:1px solid rgba(255,255,255,0.1)">LH</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>Noun</td><td style="text-align:right">21</td><td style="text-align:right">14</td><td style="text-align:right">5</td><td style="text-align:right">3</td></tr>
+              <tr><td>Verb</td><td style="text-align:right">8</td><td style="text-align:right">17</td><td style="text-align:right">9</td><td style="text-align:right">4</td></tr>
+              <tr><td>Adj</td><td style="text-align:right">6</td><td style="text-align:right">5</td><td style="text-align:right">2</td><td style="text-align:right">1</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <h3>Reference</h3>
+      <p>For a discussion of organizing tonal data and using tabular summaries, see:</p>
+      <blockquote>
+        Snider, K. (2014). <em>Tone Analysis for Field Linguists</em> (2nd ed.). Dallas, TX: SIL International. Chapter 2.
+      </blockquote>
+      <p><a href="https://www.sil.org/resources/publications/entry/56413" target="_blank" rel="noopener">SIL publication page</a></p>
+    </section>
+
+    <div class="toc">
+      <h3>Table of Contents</h3>
+      <ul>
+        <li><a href="#getting-started">Getting Started</a></li>
+        <li><a href="#url-import">Importing XML via URL</a></li>
+        <li><a href="#why-pivots">Why Pivot Tables</a></li>
+        <li><a href="#filters">Advanced Filters</a></li>
+        <li><a href="#contributing">Contributing</a></li>
+      </ul>
+    </div>
+
+    <section id="getting-started" class="card">
       <h2>Getting Started</h2>
       <ol>
         <li>Open the <a href="../app/">PWA</a>.</li>
@@ -39,7 +103,7 @@
       <p class="note">All processing happens locally in your browser. No data is uploaded.</p>
     </section>
 
-    <section class="card">
+    <section id="url-import" class="card">
       <h2>Importing XML via URL (Cross‑App)</h2>
       <p>You can launch the PWA with XML data passed in the URL hash. This avoids CORS and server uploads.</p>
       <h3>Compressed (recommended)</h3>
@@ -51,7 +115,7 @@
       <p>See the <a href="../URL_INTEGRATION.md" target="_blank" rel="noopener">URL Integration Guide</a> for more details.</p>
     </section>
 
-    <section class="card">
+    <section id="why-pivots" class="card">
       <h2>Why Pivot Tables?</h2>
       <p>Pivot tables help summarize large datasets by grouping rows and columns by chosen fields and counting matches, which is particularly useful for exploring linguistic patterns (e.g., tone sequences, morphological categories, environments).</p>
       <h3>Suggested Reading</h3>
@@ -64,7 +128,7 @@
       <p><a href="https://www.sil.org/resources/publications/entry/56413" target="_blank" rel="noopener">SIL publication page</a></p>
     </section>
 
-    <section class="card">
+    <section id="filters" class="card">
       <h2>Advanced Filters</h2>
       <ul>
         <li>Group logic: <strong>AND</strong> or <strong>OR</strong>.</li>
@@ -74,7 +138,7 @@
       </ul>
     </section>
 
-    <section class="card">
+    <section id="contributing" class="card">
       <h2>Contributing</h2>
       <p>Contributions are welcome! Ideas, bug reports, and pull requests help the project grow.</p>
       <ul>
