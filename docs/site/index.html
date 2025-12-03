@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Dekereke Pivot Tables — Documentation</title>
+  <meta name="description" content="Documentation and guides for the Dekereke Pivot Tables PWA." />
+  <link rel="icon" href="../app/icons/icon-192.png" type="image/png" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <nav>
+    <h1>Documentation</h1>
+    <a href="index.html">Overview</a>
+    <a href="getting-started.html">Getting Started</a>
+    <a href="url-import.html">Import via URL</a>
+    <a href="pivot-tables.html">Why Pivot Tables</a>
+    <a href="contributing.html">Contributing</a>
+    <hr style="border-color:rgba(255,255,255,0.08)">
+    <a href="../app/">Launch App →</a>
+    <a href="../index.html">Back to Landing</a>
+  </nav>
+  <main>
+    <header>
+      <h1>Dekereke Pivot Tables — Documentation</h1>
+      <p>Guides for loading XML, building pivots, and copying references.</p>
+    </header>
+
+    <section class="card">
+      <h2>Getting Started</h2>
+      <ol>
+        <li>Open the <a href="../app/">PWA</a>.</li>
+        <li>Click <strong>Choose XML File</strong> and select your Dekereke XML database.</li>
+        <li>Pick a <strong>Row Field</strong> and a <strong>Column Field</strong>.</li>
+        <li>Optionally add filters in <strong>Advanced Filters</strong> (AND/OR, equals/contains/regex, etc.).</li>
+        <li>Click <strong>Generate Pivot Table</strong>.</li>
+        <li>Click the count in any cell to open the <strong>Reference modal</strong>, then copy references.</li>
+      </ol>
+      <p class="note">All processing happens locally in your browser. No data is uploaded.</p>
+    </section>
+
+    <section class="card">
+      <h2>Importing XML via URL (Cross‑App)</h2>
+      <p>You can launch the PWA with XML data passed in the URL hash. This avoids CORS and server uploads.</p>
+      <h3>Compressed (recommended)</h3>
+      <p>Construct a URL: <code>.../app/index.html#gz:{base64_of_gzip(xml)}</code></p>
+      <pre><code>gzip -c file.xml | base64 | xargs -I {} open "http://localhost:8000/docs/app/index.html#gz:{}"</code></pre>
+      <h3>Uncompressed</h3>
+      <p>Construct a URL: <code>.../app/index.html#{base64(xml)}</code></p>
+      <p>The app detects <code>gz:</code> and will automatically ungzip and parse the XML.</p>
+      <p>See the <a href="../URL_INTEGRATION.md" target="_blank" rel="noopener">URL Integration Guide</a> for more details.</p>
+    </section>
+
+    <section class="card">
+      <h2>Why Pivot Tables?</h2>
+      <p>Pivot tables help summarize large datasets by grouping rows and columns by chosen fields and counting matches, which is particularly useful for exploring linguistic patterns (e.g., tone sequences, morphological categories, environments).</p>
+      <h3>Suggested Reading</h3>
+      <p>For background and practical guidance, see Chapter 2 of Keith Snider’s work:</p>
+      <blockquote>
+        Snider, K. (2014). <em>Tone Analysis for Field Linguists</em> (2nd ed.). SIL International. Chapter 2.
+      </blockquote>
+      <p class="note">APA reference: Snider, K. (2014). <em>Tone Analysis for Field Linguists</em> (2nd ed.). Dallas, TX: SIL International.</p>
+      <p>Chapter 2 discusses data organization and the value of tabular summaries, which aligns with how pivot tables can surface distributional patterns.</p>
+      <p><a href="https://www.sil.org/resources/publications/entry/56413" target="_blank" rel="noopener">SIL publication page</a></p>
+    </section>
+
+    <section class="card">
+      <h2>Advanced Filters</h2>
+      <ul>
+        <li>Group logic: <strong>AND</strong> or <strong>OR</strong>.</li>
+        <li>Operators: equals, not equals, contains, not contains, regex.</li>
+        <li>Regex is case‑insensitive. Use patterns like <code>^CV</code>, <code>HL</code>, <code>\d{4}</code>.</li>
+        <li>Multi‑select values supported where applicable.</li>
+      </ul>
+    </section>
+
+    <section class="card">
+      <h2>Contributing</h2>
+      <p>Contributions are welcome! Ideas, bug reports, and pull requests help the project grow.</p>
+      <ul>
+        <li>Open issues or PRs at the <a href="https://github.com/rulingAnts/dekereke_pivot_tables" target="_blank" rel="noopener">GitHub repository</a>.</li>
+        <li>Focus areas: performance for large XML, additional filter operators, export options, and accessibility improvements.</li>
+        <li>Please follow the AGPL‑3.0 license and include attribution.</li>
+      </ul>
+    </section>
+
+    <div class="footer">© 2025 Seth Johnston · Dekereke Pivot Tables</div>
+  </main>
+</body>
+</html>
